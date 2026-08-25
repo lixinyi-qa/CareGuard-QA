@@ -1,0 +1,89 @@
+name: CareGuard Quality Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -e ".[test]"
+      - name: Run API, domain and schema tests
+        run: pytest tests -m "not ui and not mysql" --cov=app --cov-report=term-missing --cov-report=xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-coverage
+          path: coverage.xml
+
+  mysql-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root_test
+          MYSQL_DATABASE: careguard_test
+          MYSQL_USER: careguard
+          MYSQL_PASSWORD: careguard_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -ucareguard -pcareguard_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      DATABASE_URL: mysql+pymysql://careguard:careguard_test@127.0.0.1:3306/careguard_test?charset=utf8mb4
+      JWT_SECRET: mysql-contract-test-secret-32-characters
+      RUN_MYSQL_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -e ".[test]"
+      - name: Verify MySQL contract and UTF-8 schema
+        run: pytest tests/test_mysql_integration.py -m mysql -v
+
+  ui-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: sqlite:///./careguard-ui.db
+      JWT_SECRET: ui-test-secret-at-least-32-characters
+      RUN_UI_TESTS: "1"
+      BASE_URL: http://127.0.0.1:8000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -e ".[test]"
+      - run: python -m playwright install --with-deps chromium
+      - name: Start application
+        run: uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+      - name: Wait for readiness
+        run: |
+          for attempt in {1..30}; do
+            curl --fail http://127.0.0.1:8000/health/ready && exit 0
+            sleep 1
+          done
+          exit 1
+      - name: Run Playwright accessibility flows
+        run: pytest tests/ui -m ui -v
