@@ -1,0 +1,41 @@
+CareGuard QA - MySQL 8.4.11 final consistency check
+Executed: 2026-08-24 Asia/Shanghai
+Database: careguard_test @ 127.0.0.1:3307
+Timing: after Postman, Playwright, and JMeter writes
+Expected: every issue_count equals 0
+
+DQ-001 duplicate user phone	0
+DQ-002 invalid user role	0
+DQ-003 invalid phone format	0
+DQ-004 orphan care-link elderly	0
+DQ-005 care-link role mismatch	0
+DQ-006 duplicate care link	0
+DQ-007 invalid care-link status	0
+DQ-008 active link missing accepted time	0
+DQ-009 orphan mood record	0
+DQ-010 mood owner role mismatch	0
+DQ-011 invalid emotion label	0
+DQ-012 confidence out of range	0
+DQ-013 blank raw mood text	0
+DQ-014 orphan reminder owner	0
+DQ-015 reminder owner role mismatch	0
+DQ-016 invalid reminder enum	0
+DQ-017 unauthorized reminder creator	0
+DQ-018 invalid contact priority	0
+DQ-019 invalid contact phone	0
+DQ-020 alert source mismatch	0
+DQ-021 invalid alert status	0
+DQ-022 acknowledged alert incomplete	0
+DQ-023 audit missing outcome	0
+DQ-024 orphan audit actor	0
+
+Final row counts:
+users	26
+care_links	1
+mood_checkins	107
+reminders	101
+emergency_contacts	1
+alerts	2
+audit_logs	240
+
+Result: PASS (24/24 checks returned zero issues)

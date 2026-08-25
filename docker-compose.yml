@@ -1,0 +1,44 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: careguard-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: careguard_root_dev
+      MYSQL_DATABASE: careguard
+      MYSQL_USER: careguard
+      MYSQL_PASSWORD: careguard_dev
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    ports:
+      - "3306:3306"
+    volumes:
+      - careguard_mysql_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ucareguard", "-pcareguard_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: .
+    container_name: careguard-api
+    restart: unless-stopped
+    environment:
+      APP_ENV: docker
+      DATABASE_URL: mysql+pymysql://careguard:careguard_dev@mysql:3306/careguard?charset=utf8mb4
+      JWT_SECRET: docker-demo-secret-change-before-any-public-deployment
+      ACCESS_TOKEN_MINUTES: 60
+      AUTO_CREATE_TABLES: "true"
+      CORS_ORIGINS: http://localhost:8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  careguard_mysql_data:

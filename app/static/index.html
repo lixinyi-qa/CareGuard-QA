@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="CareGuard 适老化情绪关怀平台个人质量保障项目">
+  <title>CareGuard · 安心守护</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <div class="top-notice" role="note">
+    <span aria-hidden="true">ⓘ</span>
+    本平台仅用于日常情绪关怀，不提供医疗诊断。紧急情况请联系当地急救服务。
+  </div>
+
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="CareGuard 首页">
+      <span class="brand-mark" aria-hidden="true">心</span>
+      <span><strong>CareGuard</strong><small>安心守护</small></span>
+    </a>
+    <div class="access-tools" aria-label="显示设置">
+      <button id="font-down" class="tool-button" type="button" aria-label="减小字号">A−</button>
+      <button id="font-up" class="tool-button" type="button" aria-label="增大字号">A＋</button>
+      <button id="contrast-toggle" class="tool-button" type="button" aria-pressed="false">高对比</button>
+      <button id="logout-button" class="quiet-button hidden" type="button">退出登录</button>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <section id="auth-view" class="auth-layout" aria-labelledby="welcome-title">
+      <div class="welcome-panel">
+        <p class="eyebrow">每天一分钟，关心多一点</p>
+        <h1 id="welcome-title">让每一次心情<br>都被温柔看见</h1>
+        <p class="welcome-copy">简单记录心情、按时收到提醒，与家人保持恰到好处的连接。</p>
+        <ul class="feature-list" aria-label="平台特点">
+          <li><span aria-hidden="true">✓</span> 大字清晰，操作简单</li>
+          <li><span aria-hidden="true">✓</span> 原始心情文字默认仅自己可见</li>
+          <li><span aria-hidden="true">✓</span> 家属绑定必须由老人确认</li>
+        </ul>
+        <div class="privacy-badge"><span aria-hidden="true">盾</span> 隐私优先设计</div>
+      </div>
+
+      <div class="auth-card">
+        <div class="tab-list" role="tablist" aria-label="账号操作">
+          <button id="login-tab" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="login-panel">登录</button>
+          <button id="register-tab" class="tab" type="button" role="tab" aria-selected="false" aria-controls="register-panel">注册</button>
+        </div>
+
+        <section id="login-panel" role="tabpanel" aria-labelledby="login-tab">
+          <h2>欢迎回来</h2>
+          <p class="muted">请输入手机号和密码</p>
+          <form id="login-form" novalidate>
+            <label for="login-phone">手机号码</label>
+            <input id="login-phone" name="phone" inputmode="numeric" autocomplete="tel" maxlength="11" placeholder="例如：13812345678" required data-testid="login-phone">
+            <label for="login-password">密码</label>
+            <div class="password-row">
+              <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" required data-testid="login-password">
+              <button class="password-toggle" type="button" data-target="login-password" aria-label="显示密码">显示</button>
+            </div>
+            <button class="primary-button full" type="submit" data-testid="login-submit">安全登录</button>
+          </form>
+          <p class="demo-hint">体验账号可运行 <code>python scripts/seed_demo.py</code> 创建</p>
+        </section>
+
+        <section id="register-panel" class="hidden" role="tabpanel" aria-labelledby="register-tab">
+          <h2>创建账号</h2>
+          <p class="muted">请选择最符合您的身份</p>
+          <form id="register-form" novalidate>
+            <fieldset class="role-choice">
+              <legend>账号身份</legend>
+              <label><input type="radio" name="role" value="elderly" checked><span><b>我是老人</b><small>记录心情与查看提醒</small></span></label>
+              <label><input type="radio" name="role" value="family"><span><b>我是家属</b><small>经过确认后提供关怀</small></span></label>
+            </fieldset>
+            <label for="register-name">姓名</label>
+            <input id="register-name" name="name" maxlength="50" autocomplete="name" required>
+            <label for="register-phone">手机号码</label>
+            <input id="register-phone" name="phone" inputmode="numeric" maxlength="11" autocomplete="tel" required>
+            <label for="register-password">设置密码 <small>至少 8 位，包含字母和数字</small></label>
+            <input id="register-password" name="password" type="password" minlength="8" maxlength="72" autocomplete="new-password" required>
+            <label class="consent-row"><input type="checkbox" name="consent" required> 我已阅读并同意隐私说明，知晓情绪结果不构成医疗诊断。</label>
+            <button class="primary-button full" type="submit">同意并注册</button>
+          </form>
+        </section>
+      </div>
+    </section>
+
+    <section id="dashboard-view" class="dashboard hidden" aria-label="用户中心">
+      <aside class="side-nav" aria-label="功能导航">
+        <div class="user-summary">
+          <span id="user-avatar" class="avatar">安</span>
+          <div><strong id="nav-user-name">用户</strong><small id="nav-user-role">老人端</small></div>
+        </div>
+        <nav>
+          <button class="nav-item active" type="button" data-section="overview"><span aria-hidden="true">⌂</span> 今日首页</button>
+          <button class="nav-item" type="button" data-section="mood"><span aria-hidden="true">☺</span> 心情记录</button>
+          <button class="nav-item" type="button" data-section="reminders"><span aria-hidden="true">◷</span> 提醒事项</button>
+          <button class="nav-item" type="button" data-section="care"><span aria-hidden="true">♡</span> 家庭关怀</button>
+          <button class="nav-item" type="button" data-section="privacy"><span aria-hidden="true">◇</span> 隐私与记录</button>
+        </nav>
+        <div class="side-help"><b>需要紧急帮助？</b><p>请立即联系家人或当地急救服务。</p></div>
+      </aside>
+
+      <div class="dashboard-main">
+        <section id="section-overview" class="content-section" tabindex="-1">
+          <div class="page-heading">
+            <div><p class="eyebrow" id="today-label"></p><h1>您好，<span id="welcome-name">朋友</span></h1><p>今天也要记得照顾好自己。</p></div>
+            <div id="target-picker-wrap" class="target-picker hidden"><label for="target-picker">正在查看</label><select id="target-picker"></select></div>
+          </div>
+          <div id="pending-links" class="pending-area hidden" aria-live="polite"></div>
+          <div class="metric-grid" aria-label="本月概况">
+            <article class="metric-card mood-metric"><span class="metric-icon" aria-hidden="true">☺</span><div><small>最近心情</small><strong id="latest-mood">尚未记录</strong><span id="mood-total">本月 0 次打卡</span></div></article>
+            <article class="metric-card"><span class="metric-icon" aria-hidden="true">✓</span><div><small>待办提醒</small><strong id="pending-reminders">0 项</strong><span>按时完成更安心</span></div></article>
+            <article class="metric-card"><span class="metric-icon" aria-hidden="true">♡</span><div><small>关怀消息</small><strong id="open-alerts">0 条</strong><span>家人始终在身边</span></div></article>
+          </div>
+          <div class="two-column">
+            <article id="quick-mood-card" class="panel quick-mood">
+              <div class="panel-title"><div><p class="eyebrow">每日打卡</p><h2>今天感觉怎么样？</h2></div><span aria-hidden="true">☀</span></div>
+              <form id="quick-mood-form">
+                <label for="quick-mood-text" class="sr-only">描述今天的心情</label>
+                <textarea id="quick-mood-text" maxlength="500" placeholder="例如：今天和老朋友散步，我很开心。" required data-testid="mood-text"></textarea>
+                <div class="form-foot"><small>只需说说感受，不需要提供病历等敏感信息</small><button class="primary-button" type="submit" data-testid="mood-submit">记录心情</button></div>
+              </form>
+            </article>
+            <article class="panel">
+              <div class="panel-title"><div><p class="eyebrow">接下来</p><h2>近期提醒</h2></div><button class="text-button" type="button" data-go="reminders">查看全部</button></div>
+              <div id="overview-reminders" class="item-list empty-state">暂无提醒</div>
+            </article>
+          </div>
+          <article class="panel alert-panel">
+            <div class="panel-title"><div><p class="eyebrow">温暖连接</p><h2>关怀提醒</h2></div></div>
+            <div id="overview-alerts" class="item-list empty-state">当前没有待处理的关怀消息</div>
+          </article>
+        </section>
+
+        <section id="section-mood" class="content-section hidden" tabindex="-1">
+          <div class="page-heading"><div><p class="eyebrow">趋势不等于诊断</p><h1>心情记录</h1><p>仅展示积极、中性、消极三类日常趋势。</p></div></div>
+          <div id="mood-stats" class="metric-grid compact"></div>
+          <article class="panel">
+            <div class="panel-title"><h2>历史记录</h2><span class="privacy-chip">家属端不展示原始文字</span></div>
+            <div id="mood-history" class="timeline empty-state">还没有心情记录</div>
+          </article>
+        </section>
+
+        <section id="section-reminders" class="content-section hidden" tabindex="-1">
+          <div class="page-heading"><div><p class="eyebrow">简单、准时、明确</p><h1>提醒事项</h1><p>管理用药和日程提醒。</p></div></div>
+          <div class="two-column forms-layout">
+            <article class="panel">
+              <h2>新增提醒</h2>
+              <form id="reminder-form">
+                <label for="reminder-title">提醒内容</label><input id="reminder-title" maxlength="100" placeholder="例如：晚饭后服药" required>
+                <label for="reminder-type">类型</label><select id="reminder-type"><option value="medication">用药提醒</option><option value="schedule">日程提醒</option></select>
+                <label for="reminder-time">日期与时间</label><input id="reminder-time" type="datetime-local" required>
+                <label for="reminder-repeat">重复</label><select id="reminder-repeat"><option value="once">仅一次</option><option value="daily">每天</option><option value="weekly">每周</option></select>
+                <label for="reminder-notes">备注（可选）</label><textarea id="reminder-notes" maxlength="500"></textarea>
+                <button class="primary-button full" type="submit">保存提醒</button>
+              </form>
+            </article>
+            <article class="panel"><h2>全部提醒</h2><div id="reminder-list" class="item-list empty-state">暂无提醒</div></article>
+          </div>
+        </section>
+
+        <section id="section-care" class="content-section hidden" tabindex="-1">
+          <div class="page-heading"><div><p class="eyebrow">同意后才能共享</p><h1>家庭关怀</h1><p>管理绑定关系和紧急联系人。</p></div></div>
+          <div class="two-column forms-layout">
+            <article id="link-create-card" class="panel hidden">
+              <h2>绑定老人账号</h2><p class="muted">邀请发出后，需要老人本人登录确认。</p>
+              <form id="link-form"><label for="elderly-phone">老人手机号</label><input id="elderly-phone" inputmode="numeric" maxlength="11" required><button class="primary-button full" type="submit">发送绑定邀请</button></form>
+            </article>
+            <article class="panel"><h2>我的家庭</h2><div id="link-list" class="item-list empty-state">暂无家庭绑定</div></article>
+          </div>
+          <div class="two-column forms-layout">
+            <article class="panel">
+              <h2>新增紧急联系人</h2>
+              <form id="contact-form">
+                <label for="contact-name">姓名</label><input id="contact-name" maxlength="50" required>
+                <label for="contact-phone">手机号</label><input id="contact-phone" inputmode="numeric" maxlength="11" required>
+                <label for="contact-relation">与老人关系</label><input id="contact-relation" maxlength="30" placeholder="例如：女儿" required>
+                <label for="contact-priority">联系顺序</label><select id="contact-priority"><option value="1">第一联系人</option><option value="2">第二联系人</option><option value="3">第三联系人</option></select>
+                <button class="primary-button full" type="submit">保存联系人</button>
+              </form>
+            </article>
+            <article class="panel"><h2>紧急联系人</h2><p class="muted">姓名和手机号默认脱敏展示。</p><div id="contact-list" class="item-list empty-state">暂无联系人</div></article>
+          </div>
+        </section>
+
+        <section id="section-privacy" class="content-section hidden" tabindex="-1">
+          <div class="page-heading"><div><p class="eyebrow">可见、可查、可导出</p><h1>隐私与记录</h1><p>了解数据怎样被使用，并查看自己的操作记录。</p></div></div>
+          <div class="two-column">
+            <article class="panel privacy-explain"><h2>数据保护规则</h2><ul><li>密码使用不可逆哈希保存。</li><li>家属绑定需要老人主动确认。</li><li>家属只看情绪分类，不看原始文字。</li><li>手机号和联系人姓名默认脱敏。</li><li>关键读取与变更写入审计日志。</li></ul><button id="export-button" class="secondary-button" type="button">导出我的数据（JSON）</button></article>
+            <article class="panel"><h2>我的操作记录</h2><div id="audit-list" class="item-list empty-state">暂无操作记录</div></article>
+          </div>
+          <article class="medical-boundary"><strong>重要说明</strong><p>CareGuard 的情绪分类不是医学量表，也不能判断疾病。若您或家人处于危险中，请立即联系当地急救服务或可信任的人。</p></article>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast-region" class="toast-region" role="status" aria-live="polite" aria-atomic="true"></div>
+  <script src="/static/js/app.js" defer></script>
+</body>
+</html>

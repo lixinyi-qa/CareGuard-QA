@@ -1,0 +1,238 @@
+{
+  "info": {
+    "_postman_id": "c0d4d531-ea4e-4ca1-9a8d-careguardqa01",
+    "name": "CareGuard QA - End-to-End API Regression",
+    "description": "按顺序运行的端到端回归集合：自动创建双角色账号、确认绑定，验证隐私隔离、情绪分类、提醒、联系人、告警和审计。",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.collectionVariables.get('runId')) {",
+          "  const runId = String(Date.now()).slice(-8);",
+          "  pm.collectionVariables.set('runId', runId);",
+          "  pm.collectionVariables.set('elderlyPhone', '139' + runId);",
+          "  pm.collectionVariables.set('familyPhone', '137' + runId);",
+          "  pm.collectionVariables.set('dueAt', new Date(Date.now() + 86400000).toISOString());",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Response time is below 2000 ms', function () { pm.expect(pm.response.responseTime).to.be.below(2000); });",
+          "pm.test('Correlation ID is returned', function () { pm.expect(pm.response.headers.get('X-Request-ID')).to.be.ok; });",
+          "pm.test('No server error', function () { pm.expect(pm.response.code).to.be.below(500); });"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {"key": "baseUrl", "value": "http://127.0.0.1:8000"},
+    {"key": "password", "value": "Postman123"},
+    {"key": "elderlyPhone", "value": ""},
+    {"key": "familyPhone", "value": ""},
+    {"key": "elderlyToken", "value": ""},
+    {"key": "familyToken", "value": ""},
+    {"key": "elderlyId", "value": ""},
+    {"key": "linkId", "value": ""},
+    {"key": "reminderId", "value": ""},
+    {"key": "alertId", "value": ""}
+  ],
+  "item": [
+    {
+      "name": "01 Operations",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {"method": "GET", "url": "{{baseUrl}}/health"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Service is healthy', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('ok'); });"]}}]
+        },
+        {
+          "name": "Database readiness",
+          "request": {"method": "GET", "url": "{{baseUrl}}/health/ready"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Database is ready', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().database).to.eql('connected'); });"]}}]
+        }
+      ]
+    },
+    {
+      "name": "02 Authentication",
+      "item": [
+        {
+          "name": "Register elderly",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"name\": \"Postman老人\",\n  \"phone\": \"{{elderlyPhone}}\",\n  \"password\": \"{{password}}\",\n  \"role\": \"elderly\",\n  \"consent\": true\n}"},
+            "url": "{{baseUrl}}/api/v1/auth/register"
+          },
+          "event": [{"listen": "test", "script": {"exec": [
+            "pm.test('Elderly registration succeeds', () => pm.response.to.have.status(201));",
+            "var cgBody = pm.response.json(); pm.collectionVariables.set('elderlyToken', cgBody.access_token); pm.collectionVariables.set('elderlyId', cgBody.user.id);",
+            "pm.test('Phone is masked', () => { pm.expect(cgBody.user.phone_masked).to.match(/^139\\*{4}\\d{4}$/); pm.expect(pm.response.text()).not.to.include(pm.collectionVariables.get('elderlyPhone')); });"
+          ]}}]
+        },
+        {
+          "name": "Register family",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"name\": \"Postman家属\",\n  \"phone\": \"{{familyPhone}}\",\n  \"password\": \"{{password}}\",\n  \"role\": \"family\",\n  \"consent\": true\n}"},
+            "url": "{{baseUrl}}/api/v1/auth/register"
+          },
+          "event": [{"listen": "test", "script": {"exec": [
+            "pm.test('Family registration succeeds', () => pm.response.to.have.status(201));",
+            "var cgBody = pm.response.json(); pm.collectionVariables.set('familyToken', cgBody.access_token); pm.collectionVariables.set('familyId', cgBody.user.id);",
+            "pm.test('Role is family', () => pm.expect(cgBody.user.role).to.eql('family'));"
+          ]}}]
+        },
+        {
+          "name": "Get elderly profile",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{elderlyToken}}", "type": "text"}], "url": "{{baseUrl}}/api/v1/auth/me"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Profile is protected and masked', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().role).to.eql('elderly'); pm.expect(pm.response.json()).not.to.have.property('password_hash'); });"]}}]
+        }
+      ]
+    },
+    {
+      "name": "03 Consent-based care link",
+      "item": [
+        {
+          "name": "Family sends invitation",
+          "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{familyToken}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"elderly_phone\": \"{{elderlyPhone}}\"}"}, "url": "{{baseUrl}}/api/v1/care-links"},
+          "event": [{"listen": "test", "script": {"exec": ["var cgBody = pm.response.json(); pm.test('Invitation remains pending', () => { pm.response.to.have.status(201); pm.expect(cgBody.status).to.eql('pending'); }); pm.collectionVariables.set('linkId', cgBody.id);"]}}]
+        },
+        {
+          "name": "Elderly sees pending invitation",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{elderlyToken}}"}], "url": "{{baseUrl}}/api/v1/care-links"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Pending invitation is visible to elderly', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().some(x => x.id == pm.collectionVariables.get('linkId') && x.status === 'pending')).to.be.true; });"]}}]
+        },
+        {
+          "name": "Elderly accepts invitation",
+          "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{elderlyToken}}"}], "url": "{{baseUrl}}/api/v1/care-links/{{linkId}}/accept"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Explicit consent activates the link', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().status).to.eql('active'); pm.expect(pm.response.json().accepted_at).to.be.ok; });"]}}]
+        },
+        {
+          "name": "Family sees active link",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{familyToken}}"}], "url": "{{baseUrl}}/api/v1/care-links"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Link is active for family', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()[0].status).to.eql('active'); });"]}}]
+        }
+      ]
+    },
+    {
+      "name": "04 Emotion and privacy",
+      "item": [
+        {
+          "name": "Create positive mood",
+          "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{elderlyToken}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"text\": \"今天和朋友散步，我很开心\"}"}, "url": "{{baseUrl}}/api/v1/moods"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Positive label and disclaimer returned', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().emotion).to.eql('positive'); pm.expect(pm.response.json().disclaimer).to.include('不构成医疗诊断'); });"]}}]
+        },
+        {
+          "name": "Create neutral mood",
+          "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{elderlyToken}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"text\": \"今天在家看了电视\"}"}, "url": "{{baseUrl}}/api/v1/moods"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Neutral label returned', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().emotion).to.eql('neutral'); });"]}}]
+        },
+        {
+          "name": "Create negative mood 1",
+          "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{elderlyToken}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"text\": \"今天很难过\"}"}, "url": "{{baseUrl}}/api/v1/moods"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Negative label returned', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().emotion).to.eql('negative'); });"]}}]
+        },
+        {
+          "name": "Create negative mood 2",
+          "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{elderlyToken}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"text\": \"最近有些焦虑\"}"}, "url": "{{baseUrl}}/api/v1/moods"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Second negative check-in succeeds', () => pm.response.to.have.status(201));"]}}]
+        },
+        {
+          "name": "Create negative mood 3 and streak alert",
+          "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{elderlyToken}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"text\": \"一个人有些孤独\"}"}, "url": "{{baseUrl}}/api/v1/moods"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Third negative check-in succeeds', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().emotion).to.eql('negative'); });"]}}]
+        },
+        {
+          "name": "Create high-attention mood",
+          "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{elderlyToken}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"text\": \"我觉得活着没意思\"}"}, "url": "{{baseUrl}}/api/v1/moods"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('High-attention phrase is flagged without diagnosis', () => { pm.response.to.have.status(201); pm.expect(pm.response.json().is_high_risk).to.be.true; pm.expect(pm.response.json().emotion).to.eql('negative'); });"]}}]
+        },
+        {
+          "name": "Owner reads raw mood text",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{elderlyToken}}"}], "url": "{{baseUrl}}/api/v1/moods?owner_id={{elderlyId}}"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Owner can see own raw text', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()[0].text).to.be.a('string'); });"]}}]
+        },
+        {
+          "name": "Family reads labels but raw text is redacted",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{familyToken}}"}], "url": "{{baseUrl}}/api/v1/moods?owner_id={{elderlyId}}"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Every raw text field is redacted for family', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().length).to.be.above(0); pm.expect(pm.response.json().every(x => x.text === null)).to.be.true; });"]}}]
+        },
+        {
+          "name": "Family reads aggregate mood stats",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{familyToken}}"}], "url": "{{baseUrl}}/api/v1/moods/stats?owner_id={{elderlyId}}&days=30"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Three-class counts reconcile', () => { const d = pm.response.json(); pm.response.to.have.status(200); pm.expect(d.positive + d.neutral + d.negative).to.eql(d.total); });"]}}]
+        }
+      ]
+    },
+    {
+      "name": "05 Reminders, contacts and alerts",
+      "item": [
+        {
+          "name": "Family creates medication reminder",
+          "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{familyToken}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"owner_id\": {{elderlyId}},\n  \"title\": \"晚饭后服药\",\n  \"reminder_type\": \"medication\",\n  \"due_at\": \"{{dueAt}}\",\n  \"recurrence\": \"daily\",\n  \"notes\": \"遵医嘱使用\"\n}"}, "url": "{{baseUrl}}/api/v1/reminders"},
+          "event": [{"listen": "test", "script": {"exec": ["var cgBody = pm.response.json(); pm.test('Linked family can create reminder', () => { pm.response.to.have.status(201); pm.expect(cgBody.reminder_type).to.eql('medication'); }); pm.collectionVariables.set('reminderId', cgBody.id);"]}}]
+        },
+        {
+          "name": "Elderly lists reminders",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{elderlyToken}}"}], "url": "{{baseUrl}}/api/v1/reminders?owner_id={{elderlyId}}"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Created reminder is visible to owner', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().some(x => x.id == pm.collectionVariables.get('reminderId'))).to.be.true; });"]}}]
+        },
+        {
+          "name": "Elderly completes reminder",
+          "request": {"method": "PATCH", "header": [{"key": "Authorization", "value": "Bearer {{elderlyToken}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"is_completed\": true}"}, "url": "{{baseUrl}}/api/v1/reminders/{{reminderId}}"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Reminder is completed', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().is_completed).to.be.true; });"]}}]
+        },
+        {
+          "name": "Create emergency contact",
+          "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{elderlyToken}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\"name\": \"王小爱\", \"phone\": \"13912345678\", \"relationship\": \"女儿\", \"priority\": 1}"}, "url": "{{baseUrl}}/api/v1/contacts"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Contact is masked at API boundary', () => { const d = pm.response.json(); pm.response.to.have.status(201); pm.expect(d.phone_masked).to.eql('139****5678'); pm.expect(pm.response.text()).not.to.include('13912345678'); });"]}}]
+        },
+        {
+          "name": "Family lists masked contacts",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{familyToken}}"}], "url": "{{baseUrl}}/api/v1/contacts?owner_id={{elderlyId}}"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Contact list contains masked values only', () => { const d = pm.response.json(); pm.response.to.have.status(200); pm.expect(d[0].phone_masked).to.include('****'); pm.expect(d[0]).not.to.have.property('phone'); });"]}}]
+        },
+        {
+          "name": "Family lists care alerts",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{familyToken}}"}], "url": "{{baseUrl}}/api/v1/alerts?owner_id={{elderlyId}}"},
+          "event": [{"listen": "test", "script": {"exec": ["var cgBody = pm.response.json(); pm.test('Care alerts exist and do not leak raw text', () => { pm.response.to.have.status(200); pm.expect(cgBody.length).to.be.above(0); pm.expect(pm.response.text()).not.to.include('活着没意思'); }); var openAlert = cgBody.find(x => x.status === 'open'); if (openAlert) pm.collectionVariables.set('alertId', openAlert.id);"]}}]
+        },
+        {
+          "name": "Family acknowledges care alert",
+          "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{familyToken}}"}], "url": "{{baseUrl}}/api/v1/alerts/{{alertId}}/acknowledge"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Alert is acknowledged with timestamp', () => { const d = pm.response.json(); pm.response.to.have.status(200); pm.expect(d.status).to.eql('acknowledged'); pm.expect(d.acknowledged_at).to.be.ok; });"]}}]
+        }
+      ]
+    },
+    {
+      "name": "06 Governance",
+      "item": [
+        {
+          "name": "Owner reads audit trail",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{elderlyToken}}"}], "url": "{{baseUrl}}/api/v1/audit-logs/me?limit=30"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Audit trail contains mood actions', () => { const d = pm.response.json(); pm.response.to.have.status(200); pm.expect(d.some(x => x.resource_type === 'mood')).to.be.true; });"]}}]
+        },
+        {
+          "name": "Owner exports own data",
+          "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{elderlyToken}}"}], "url": "{{baseUrl}}/api/v1/privacy/export"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Portable export contains only owner identity', () => { const d = pm.response.json(); pm.response.to.have.status(200); pm.expect(String(d.user.id)).to.eql(String(pm.collectionVariables.get('elderlyId'))); pm.expect(d).to.have.all.keys('export_version', 'user', 'moods', 'reminders', 'contacts'); });"]}}]
+        },
+        {
+          "name": "Read AI model card",
+          "request": {"method": "GET", "url": "{{baseUrl}}/api/v1/ai/model-card"},
+          "event": [{"listen": "test", "script": {"exec": ["pm.test('Model card declares three labels and medical exclusion', () => { const d = pm.response.json(); pm.response.to.have.status(200); pm.expect(d.labels).to.eql(['positive','neutral','negative']); pm.expect(d.out_of_scope).to.include('medical diagnosis'); pm.expect(d.known_limitations.length).to.be.above(0); });"]}}]
+        }
+      ]
+    }
+  ]
+}

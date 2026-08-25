@@ -1,0 +1,50 @@
+{
+  "model": "CareGuard Chinese Emotion Baseline 1.0.0",
+  "dataset": "tests\\data\\emotion_eval.json",
+  "cases": 30,
+  "class_balance": {
+    "positive": 10,
+    "neutral": 10,
+    "negative": 10
+  },
+  "accuracy": 1.0,
+  "macro_f1": 1.0,
+  "per_class": {
+    "positive": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 10
+    },
+    "neutral": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 10
+    },
+    "negative": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 10
+    }
+  },
+  "high_risk_recall": 1.0,
+  "confusion_matrix": {
+    "positive": {
+      "positive": 10
+    },
+    "neutral": {
+      "neutral": 10
+    },
+    "negative": {
+      "negative": 10
+    }
+  },
+  "failures": [],
+  "limitations": [
+    "This curated baseline set is small and is not clinical validation.",
+    "Confidence is rule evidence strength, not calibrated probability.",
+    "Sarcasm, dialects, and long mixed-emotion narratives need broader testing."
+  ]
+}
